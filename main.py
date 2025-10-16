@@ -1,21 +1,66 @@
 # main.py
 
 from fastapi import FastAPI
-from src.routers import chatbotRouter
+from contextlib import asynccontextmanager
 import logfire
+
+from src.routers import chatbotRouter
+from src.collections.chromadb import SecurityReportDatabase
+from src.tools.reportsToolClass import ReportsTool
+from src.agents.guardAgent import set_reports_tool
+from src.utils.constants import CHROMA_PERSIST_DIR
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifespan manager - runs on startup and shutdown.
+    Initializes ChromaDB and ingests data if collection is empty.
+    """
+    print("[Startup] Initializing ChromaDB...")
+
+    # Initialize ChromaDB
+    db = SecurityReportDatabase(persist_directory=CHROMA_PERSIST_DIR)
+    collection = db.get_collection()
+
+    # Check if collection is empty and ingest data if needed
+    try:
+        count = collection.count()
+        print(f"[Startup] ChromaDB collection has {count} documents")
+
+        if count == 0:
+            print("[Startup] Collection is empty. Ingesting data from src/collections/data.json...")
+            db.ingest_data("src/collections/data.json")
+            print(f"[Startup] Data ingestion complete. Collection now has {collection.count()} documents")
+        else:
+            print("[Startup] Collection already populated. Skipping data ingestion.")
+    except Exception as e:
+        print(f"[Startup] Error during ChromaDB initialization: {str(e)}")
+        raise
+
+    # Initialize Reports Tool with the collection
+    reports_tool = ReportsTool(collection=collection)
+
+    # Set the reports tool for the Guard Agent
+    set_reports_tool(reports_tool)
+    print("[Startup] Reports Tool initialized and connected to Guard Agent")
+
+    yield
+
+    print("[Shutdown] Application shutting down...")
+
 
 logfire.configure()
 logfire.instrument_pydantic_ai()
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # Include the router in the main application
-# All endpoints in items.py will be prefixed with '/items'
 app.include_router(
     chatbotRouter.router
 )
 
-# You can keep your root path here if you want:
+# Root endpoint
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "GuardOwl API - Security Report Assistant"}

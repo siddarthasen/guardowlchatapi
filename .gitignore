@@ -10,3 +10,7 @@ wheels/
 .venv
 
 .env
+
+/examples
+Claude.MD
+/chroma_db
