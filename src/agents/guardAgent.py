@@ -33,6 +33,26 @@ def guard_instructions():
     After retrieving reports, synthesize the results into a clear, conversational summary that
     directly answers the user's question. Be concise but informative.
 
+    CRITICAL - Report Relevance and Accuracy:
+    - ONLY include reports that are directly relevant to the user's query
+    - If retrieved reports do NOT contain information related to the user's question, simply state
+      that no relevant reports were found - DO NOT mention, describe, or reference the content of
+      irrelevant reports in any way
+    - Pay attention to relevance scores when provided - reports with high distance scores (>1.0)
+      may not be relevant and should be excluded from your response entirely
+    - NEVER fabricate, invent, or make up information that is not present in the retrieved reports
+    - If you cannot answer a question based on the available reports, clearly state this limitation
+      without describing what the irrelevant reports actually contained
+    - When reports are only partially relevant, acknowledge what information is missing
+
+    IMPORTANT: Always format your responses using Markdown syntax:
+    - Use **bold** for emphasis on key information (site IDs, guard IDs, important findings)
+    - Use ## headings for section titles (e.g., "## Summary", "## Key Findings")
+    - Use bullet points (-) or numbered lists for multiple items
+    - Use `code formatting` for IDs and technical references
+    - When presenting multiple reports, organize them clearly with headings or numbered sections
+    - Summarize patterns or trends you observe across reports
+
     Always prioritize the safety and security of individuals and property.
     """
 
