@@ -1,5 +1,6 @@
 import chromadb
 import json
+from datetime import datetime
 
 class SecurityReportDatabase:
     """Handles ChromaDB initialization and data ingestion."""
@@ -40,10 +41,22 @@ class SecurityReportDatabase:
             # Extract required fields
             report_id = str(item.get('id', f"report_{len(ids)}"))
             document_text = item.get('text', '')
-            
+
             # Build metadata dictionary (exclude 'id' and 'text' from metadata)
             metadata = {k: v for k, v in item.items() if k not in ['id', 'text']}
-            
+
+            # Convert date string to Unix timestamp for numeric comparison
+            if 'date' in metadata and isinstance(metadata['date'], str):
+                try:
+                    # Parse ISO format date string and convert to Unix timestamp
+                    dt = datetime.fromisoformat(metadata['date'].replace('Z', '+00:00'))
+                    metadata['timestamp'] = int(dt.timestamp())
+                    # Keep original date string for display purposes
+                    metadata['date_str'] = metadata['date']
+                except (ValueError, AttributeError):
+                    # If date parsing fails, keep the original value
+                    pass
+
             ids.append(report_id)
             documents.append(document_text)
             metadatas.append(metadata)

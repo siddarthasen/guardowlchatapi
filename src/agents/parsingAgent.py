@@ -21,24 +21,39 @@ def parsing_instructions():
       Set to null if the query is purely metadata filtering (e.g., "all reports from Site S04")
 
     - where_filter: Extract EXACT filters (who, where, when) for metadata matching as a JSON STRING.
-      Supported operators: $eq (default), $ne, $gt, $gte, $lt, $lte, $in, $nin, $and, $or, $regex
+      Supported operators: $eq (default), $ne, $gt, $gte, $lt, $lte, $in, $nin, $and, $or
+      NOTE: Use the 'timestamp' field (Unix timestamp) for date filtering, NOT 'date'
       Common filters:
         * siteId: Site identifiers (e.g., "S04", "S01")
         * guardId: Guard identifiers (e.g., "G03", "G12")
-        * date: ISO date strings. Use $regex for date patterns
+        * timestamp: Unix timestamp (seconds since epoch) with $gte/$lt for date ranges
       IMPORTANT: Return as a JSON string, not an object
 
     - n_results: Infer from "top N", "all", or default to 5.
       Use 1000 for "all" queries. Use 10 for "activities" or "what did" queries.
 
-    Examples:
+    RELATIVE DATE HANDLING:
+    Today's date is 2025-10-16. Convert relative dates to Unix timestamps using $gte (>=) and $lt (<) operators.
+    Use the 'timestamp' field for all date filtering.
 
-    Input: "What did Guard G03 do on August 30th?"
-    Output: {
-      "query_texts": "activities",
-      "where_filter": "{\\"guardId\\": \\"G03\\", \\"date\\": {\\"$regex\\": \\"^2025-08-30\\"}}",
-      "n_results": 10
-    }
+    Key Unix timestamps for reference (seconds since epoch):
+    - 2025-10-15 00:00:00 UTC = 1760486400
+    - 2025-10-16 00:00:00 UTC = 1760572800
+    - 2025-10-17 00:00:00 UTC = 1760659200
+    - 2025-10-09 00:00:00 UTC = 1760083200
+    - 2025-09-01 00:00:00 UTC = 1756684800
+    - 2025-10-01 00:00:00 UTC = 1727740800
+
+    - Specific day: Use $gte for start and $lt for next day
+      Example: yesterday → {"$and": [{"timestamp": {"$gte": 1760486400}}, {"timestamp": {"$lt": 1760572800}}]}
+    - Time of day: "last night", "this morning", "tonight" all map to full 24-hour day periods
+      - "last night" → yesterday ({"$and": [{"timestamp": {"$gte": 1760486400}}, {"timestamp": {"$lt": 1760572800}}]})
+      - "this morning/tonight" → today ({"$and": [{"timestamp": {"$gte": 1760572800}}, {"timestamp": {"$lt": 1760659200}}]})
+    - Week range: 7 days, use $gte for first day and $lt for day after last
+      Example: last week → {"$and": [{"timestamp": {"$gte": 1760083200}}, {"timestamp": {"$lt": 1760572800}}]}
+    - Month/Year: Calculate start and end timestamps similarly
+
+    Examples:
 
     Input: "All reports from Site S04"
     Output: {
@@ -47,30 +62,36 @@ def parsing_instructions():
       "n_results": 1000
     }
 
-    Input: "Top 3 white vehicle incidents"
-    Output: {
-      "query_texts": "white vehicle incident",
-      "where_filter": null,
-      "n_results": 3
-    }
-
-    Input: "Reports about loitering near north gate"
-    Output: {
-      "query_texts": "loitering north gate",
-      "where_filter": null,
-      "n_results": 5
-    }
-
     Input: "Guard G03's reports from site S04 on 2025-08-30"
     Output: {
       "query_texts": "reports",
-      "where_filter": "{\\"$and\\": [{\\"guardId\\": \\"G03\\"}, {\\"siteId\\": \\"S04\\"}, {\\"date\\": {\\"$regex\\": \\"^2025-08-30\\"}}]}",
+      "where_filter": "{\\"$and\\": [{\\"guardId\\": \\"G03\\"}, {\\"siteId\\": \\"S04\\"}, {\\"timestamp\\": {\\"$gte\\": 1724976000}}, {\\"timestamp\\": {\\"$lt\\": 1725062400}}]}",
+      "n_results": 10
+    }
+
+    Input: "Were there any geofence breaches at the west gate last week?"
+    Output: {
+      "query_texts": "geofence breach west gate",
+      "where_filter": "{\\"$and\\": [{\\"timestamp\\": {\\"$gte\\": 1760083200}}, {\\"timestamp\\": {\\"$lt\\": 1760572800}}]}",
+      "n_results": 10
+    }
+
+    Input: "Show me last month's incidents"
+    Output: {
+      "query_texts": "incidents",
+      "where_filter": "{\\"$and\\": [{\\"timestamp\\": {\\"$gte\\": 1756684800}}, {\\"timestamp\\": {\\"$lt\\": 1727740800}}]}",
+      "n_results": 1000
+    }
+
+    Input: "What happened at Site S01 last night?"
+    Output: {
+      "query_texts": "incidents reports activities",
+      "where_filter": "{\\"$and\\": [{\\"siteId\\": \\"S01\\"}, {\\"timestamp\\": {\\"$gte\\": 1760486400}}, {\\"timestamp\\": {\\"$lt\\": 1760572800}}]}",
       "n_results": 10
     }
 
     Always return valid JSON matching the ChromaQueryParams schema.
-    Be smart about extracting dates - convert relative dates like "yesterday" to actual dates.
-    Today's date is 2025-10-16 for reference.
+    Be smart about extracting dates - ALWAYS convert relative dates like "yesterday", "last week", "last month" to Unix timestamps.
     """
 
 async def parse_natural_language_query(user_query: str) -> ChromaQueryParams:

@@ -33,6 +33,13 @@ def guard_instructions():
     After retrieving reports, synthesize the results into a clear, conversational summary that
     directly answers the user's question. Be concise but informative.
 
+    HANDLING EMPTY RESULTS:
+    - If the database returns 0 reports or no relevant results, respond conversationally and helpfully
+    - Reference the ORIGINAL time expression used by the user (e.g., "last week", "yesterday", "today")
+    - Do NOT mention technical date formats or internal error messages
+    - Offer to help search for reports from a different time period or location
+    - Example: "I didn't find any geofence breaches at the west gate last week. Would you like me to search for reports from a different time period or location?"
+
     CRITICAL - Report Relevance and Accuracy:
     - ONLY include reports that are directly relevant to the user's query
     - If retrieved reports do NOT contain information related to the user's question, simply state
@@ -89,7 +96,8 @@ async def retrieve_security_reports(context: RunContext, user_query: str) -> str
             formatted_output += f"{i}. Report {report['id']}\n"
             formatted_output += f"   Site: {metadata.get('siteId', 'N/A')}, "
             formatted_output += f"Guard: {metadata.get('guardId', 'N/A')}, "
-            formatted_output += f"Date: {metadata.get('date', 'N/A')}\n"
+            # Use date_str for display (original ISO format), fall back to date if not available
+            formatted_output += f"Date: {metadata.get('date_str', metadata.get('date', 'N/A'))}\n"
             formatted_output += f"   {report['text']}\n"
 
             # Include distance for semantic searches

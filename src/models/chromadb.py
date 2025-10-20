@@ -24,8 +24,8 @@ class ChromaQueryParams(BaseModel):
         description=(
             "A JSON string representing the ChromaDB 'where' filter applied to document metadata. "
             "Use this for exact match filtering on fields like 'siteId', 'guardId', "
-            "or time-based range queries on 'date'. "
-            "Examples: '{\"siteId\": \"S04\"}' or '{\"guardId\": \"G03\", \"date\": {\"$regex\": \"^2025-08-30\"}}'"
+            "or time-based range queries on 'date' using $gte and $lt operators. "
+            "Examples: '{\"siteId\": \"S04\"}' or '{\"$and\": [{\"guardId\": \"G03\"}, {\"date\": {\"$gte\": \"2025-08-30\"}}, {\"date\": {\"$lt\": \"2025-08-31\"}}]}'"
         )
     )
     
