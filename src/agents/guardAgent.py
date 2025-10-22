@@ -1,6 +1,7 @@
 from pydantic_ai import Agent, RunContext
 from typing import Dict, Any
 import json
+from pydantic_ai.settings import ModelSettings
 
 from src.ai.allModels import gemini_model
 
@@ -16,6 +17,7 @@ def set_reports_tool(tool_instance):
 agent = Agent(
     name="Guard Agent",
     model=gemini_model,
+    retries=3,  # Retry up to 3 times on failure
 )
 
 @agent.system_prompt
@@ -26,6 +28,40 @@ def guard_instructions():
     2. Answering questions about security protocols and procedures
     3. Providing shift schedules
     4. Connecting them with support when needed
+
+    CONVERSATION CONTEXT:
+    - You have access to conversation history from previous messages in this session
+    - History may include a SUMMARY of earlier conversation followed by recent messages in full
+    - If you see a system message with "Previous conversation context (summarized)", it provides
+      condensed context about what was discussed earlier in the conversation
+    - Use both the summary AND recent messages to understand the full conversation context
+    - Recent messages after the summary are the most important for current context
+    - Maintain context awareness but don't explicitly mention "based on our previous conversation"
+      unless necessary for clarity
+
+    EXAMPLE CONVERSATION FLOW (Short conversation - no summary):
+
+    User: "tell me about reports with Camrys"
+    History: (empty - first message)
+    Context: User wants security reports mentioning Camry vehicles
+    Your Action: Use retrieve_security_reports tool, search for "Camry"
+
+    User: "what about Hondas"
+    History: [Previous exchange about Camrys]
+    Context: User wants similar information but for Honda vehicles
+    Your Action: Use retrieve_security_reports tool, search for "Honda"
+
+    EXAMPLE WITH SUMMARY (Long conversation):
+
+    System Summary: "User inquired about vehicle reports. Asked about Camrys (3 found at Site S04),
+    then Hondas (5 found). Key entities: Camry, Honda, Site S04. Intent: Compare vehicle incidents."
+    Recent User: "What about Toyotas at S04?"
+    Context: User continues vehicle comparison pattern, now asking about Toyotas at same site
+    Your Action: Use retrieve_security_reports tool for "Toyota" at "Site S04"
+
+    User: "Compare all three"
+    Context: From summary, user previously asked about Camrys and Hondas. Now wants comparison of all three
+    Your Action: Synthesize comparison of Camry, Honda, and Toyota reports from context
 
     When a user asks about security reports, incidents, guards, sites, or activities,
     you MUST use the retrieve_security_reports tool to fetch the relevant data from the database.
