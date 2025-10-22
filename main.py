@@ -9,14 +9,21 @@ from src.collections.chromadb import SecurityReportDatabase
 from src.tools.reportsToolClass import ReportsTool
 from src.agents.guardAgent import set_reports_tool
 from src.utils.constants import CHROMA_PERSIST_DIR
+from src.db.mongodb import mongodb  # NEW: Import MongoDB manager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Application lifespan manager - runs on startup and shutdown.
-    Initializes ChromaDB and ingests data if collection is empty.
+    Initializes MongoDB Atlas and ChromaDB, ingests data if collection is empty.
     """
+    print("[Startup] Starting application...")
+
+    # Initialize MongoDB connection
+    print("[Startup] Connecting to MongoDB Atlas...")
+    await mongodb.connect()
+
     print("[Startup] Initializing ChromaDB...")
 
     # Initialize ChromaDB
@@ -44,10 +51,13 @@ async def lifespan(app: FastAPI):
     # Set the reports tool for the Guard Agent
     set_reports_tool(reports_tool)
     print("[Startup] Reports Tool initialized and connected to Guard Agent")
+    print("[Startup] Application startup complete")
 
     yield
 
     print("[Shutdown] Application shutting down...")
+    await mongodb.close()
+    print("[Shutdown] Application shutdown complete")
 
 
 logfire.configure()
@@ -63,4 +73,4 @@ app.include_router(
 # Root endpoint
 @app.get("/")
 async def root():
-    return {"message": "GuardOwl API - Security Report Assistant"}
+    return {"message": "GuardOwl API - Security Report Assistant with Conversation History"}
