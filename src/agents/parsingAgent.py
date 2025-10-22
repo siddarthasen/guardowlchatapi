@@ -7,6 +7,7 @@ parsing_agent = Agent(
     name="Parsing Agent",
     model=gemini_model,
     output_type=ChromaQueryParams,
+    retries=3,  # Retry up to 3 times on failure
 )
 
 @parsing_agent.system_prompt
